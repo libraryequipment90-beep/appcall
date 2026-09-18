@@ -1,0 +1,16 @@
+{
+  "name": "speakup-signaling-server",
+  "version": "1.0.0",
+  "description": "Lightweight Socket.io signaling server for P2P voice calling",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
