@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: guestId,
       display_name: guestName,
       is_guest: true,
+      is_premium: false,
       guest_device_id: guestId,
       plan: "free",
       plan_expires_at: null,

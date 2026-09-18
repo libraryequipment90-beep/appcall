@@ -48,26 +48,17 @@ export async function sendFriendRequest(
 }
 
 /**
- * Accepts a friend request. Uses the SECURITY DEFINER function which checks
- * that at least one party has an active paid plan.
+ * Accepts a friend request. Uses the SECURITY DEFINER function which inserts
+ * the mutual friendship rows. Friend requests are free for all users.
  */
 export async function acceptFriendRequest(
   requestId: string,
-): Promise<{ error: string | null; needsUpgrade?: boolean }> {
+): Promise<{ error: string | null }> {
   const { error } = await supabase.rpc("accept_friend_request", {
     p_request_id: requestId,
   });
 
-  if (error) {
-    const msg = error.message.toLowerCase();
-    if (msg.includes("paid plan")) {
-      return {
-        error: "Upgrade to a Paid Plan to accept Friend Requests and Talk Anytime.",
-        needsUpgrade: true,
-      };
-    }
-    return { error: "Could not accept this request. Please try again." };
-  }
+  if (error) return { error: "Could not accept this request. Please try again." };
   return { error: null };
 }
 
@@ -95,7 +86,7 @@ export async function fetchPendingRequests(
     .from("friend_requests")
     .select(`
       id, sender_id, receiver_id, status, created_at,
-      sender_profile:profiles!friend_requests_sender_id_fkey(id, display_name, is_guest, guest_device_id, plan, plan_expires_at)
+      sender_profile:profiles!friend_requests_sender_id_fkey(id, display_name, is_guest, is_premium, guest_device_id, plan, plan_expires_at)
     `)
     .eq("receiver_id", userId)
     .eq("status", "pending")
@@ -121,7 +112,7 @@ export async function fetchFriends(userId: string): Promise<Friendship[]> {
     .from("friends")
     .select(`
       id, user_id, friend_id, created_at,
-      friend_profile:profiles!friends_friend_id_fkey(id, display_name, is_guest, guest_device_id, plan, plan_expires_at)
+      friend_profile:profiles!friends_friend_id_fkey(id, display_name, is_guest, is_premium, guest_device_id, plan, plan_expires_at)
     `)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });

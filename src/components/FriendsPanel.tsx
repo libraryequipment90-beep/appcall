@@ -5,7 +5,7 @@ interface FriendsPanelProps {
   pendingRequests: FriendRequest[];
   friends: Friendship[];
   loading: boolean;
-  onAccept: (requestId: string) => Promise<{ error: string | null; needsUpgrade?: boolean }>;
+  onAccept: (requestId: string) => Promise<{ error: string | null }>;
   onDecline: (requestId: string) => void;
   onCallFriend: (friendId: string) => void;
   onClose: () => void;
@@ -112,7 +112,7 @@ export function FriendsPanel({
                         <p className="text-white text-sm font-medium truncate">
                           {friend.friend_profile?.display_name || "Unknown"}
                         </p>
-                        {friend.friend_profile?.plan === "paid" && (
+                        {friend.friend_profile?.is_premium && (
                           <p className="text-amber-400 text-xs">Premium member</p>
                         )}
                       </div>

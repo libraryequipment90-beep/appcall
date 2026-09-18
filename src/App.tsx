@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useFriends } from "@/hooks/useFriends";
 import { areFriends } from "@/lib/friends";
 import { sendFriendRequest } from "@/lib/friends";
+import { purchasePremium, restorePurchases } from "@/lib/googlePlayBilling";
 
 function App() {
   const { profile, accountType, loading, signOut, refreshProfile } = useAuth();
@@ -85,23 +86,40 @@ function App() {
     }
   }, [status]);
 
-  // Handle upgrade action
-  const handleUpgrade = useCallback(() => {
+  // Handle upgrade via Google Play In-App Billing (₹115 plan)
+  const handleUpgrade = useCallback(async (): Promise<string | null> => {
     if (accountType === "guest") {
-      setUpgradeOpen(false);
       setAuthMode("signup");
       setAuthOpen(true);
       showToast("Please create an account first to upgrade.", "info");
-      return;
+      return null;
     }
 
-    // Stripe is not yet configured — direct user to set it up
-    setUpgradeOpen(false);
-    showToast(
-      "Stripe payment is not yet configured. Please connect Stripe in your project settings to enable upgrades.",
-      "error",
-    );
-  }, [accountType, showToast]);
+    const result = await purchasePremium();
+    if (result.error) return result.error;
+
+    await refreshProfile();
+    await refreshFriends();
+    showToast("Premium unlocked! You can now call your friends directly.", "success");
+    return null;
+  }, [accountType, refreshProfile, refreshFriends, showToast]);
+
+  // Handle restoring a previous Google Play purchase
+  const handleRestore = useCallback(async (): Promise<string | null> => {
+    if (accountType === "guest") {
+      setAuthMode("signup");
+      setAuthOpen(true);
+      showToast("Please sign in to restore purchases.", "info");
+      return null;
+    }
+
+    const result = await restorePurchases();
+    if (result.error) return result.error;
+
+    await refreshProfile();
+    showToast("Purchases restored — Premium is active!", "success");
+    return null;
+  }, [accountType, refreshProfile, showToast]);
 
   // Handle find partner
   const handleFindPartner = useCallback(() => {
@@ -139,12 +157,7 @@ function App() {
     async (requestId: string) => {
       const result = await acceptRequest(requestId);
       if (result.error) {
-        if (result.needsUpgrade) {
-          setUpgradeReason(result.error);
-          setUpgradeOpen(true);
-        } else {
-          showToast(result.error, "error");
-        }
+        showToast(result.error, "error");
       } else {
         showToast("Friend request accepted!", "success");
         void refreshFriends();
@@ -154,9 +167,15 @@ function App() {
     [acceptRequest, showToast, refreshFriends],
   );
 
-  // Handle call friend from FriendsPanel
+  // Handle call friend from FriendsPanel — direct calling requires Premium (₹115 plan)
   const handleCallFriend = useCallback(
     (friendId: string) => {
+      if (!profile?.is_premium) {
+        setFriendsOpen(false);
+        setUpgradeReason("Direct calling is a Premium feature. Get the ₹115 plan to call your friends directly.");
+        setUpgradeOpen(true);
+        return;
+      }
       const friend = friends.find((f) => f.friend_id === friendId);
       if (friend) {
         setFriendCallName(friend.friend_profile?.display_name);
@@ -165,13 +184,19 @@ function App() {
       setFriendsOpen(false);
       startFriendCall(friendId);
     },
-    [friends, startFriendCall],
+    [friends, startFriendCall, profile],
   );
 
-  // Handle incoming friend call accept
+  // Handle incoming friend call accept — Premium required to join a direct call
   const handleAcceptIncoming = useCallback(() => {
+    if (!profile?.is_premium) {
+      declineIncomingFriendCall();
+      setUpgradeReason("Direct calling is a Premium feature. Get the ₹115 plan to receive calls from friends.");
+      setUpgradeOpen(true);
+      return;
+    }
     acceptIncomingFriendCall();
-  }, [acceptIncomingFriendCall]);
+  }, [profile, acceptIncomingFriendCall, declineIncomingFriendCall]);
 
   // Handle incoming friend call decline
   const handleDeclineIncoming = useCallback(() => {
@@ -277,6 +302,7 @@ function App() {
         <UpgradeModal
           onClose={() => setUpgradeOpen(false)}
           onUpgrade={handleUpgrade}
+          onRestore={handleRestore}
           reason={upgradeReason}
         />
       )}

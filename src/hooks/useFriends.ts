@@ -48,7 +48,7 @@ export function useFriends(userId: string | null) {
   );
 
   const acceptRequest = useCallback(
-    async (requestId: string): Promise<{ error: string | null; needsUpgrade?: boolean }> => {
+    async (requestId: string): Promise<{ error: string | null }> => {
       const result = await acceptFriendRequest(requestId);
       if (!result.error) void refresh();
       return result;

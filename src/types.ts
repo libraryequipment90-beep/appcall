@@ -13,6 +13,7 @@ export interface UserProfile {
   id: string;
   display_name: string;
   is_guest: boolean;
+  is_premium: boolean;
   guest_device_id: string | null;
   plan: PlanType;
   plan_expires_at: string | null;
